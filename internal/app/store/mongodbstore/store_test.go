@@ -1,4 +1,4 @@
-package store_test
+package mongodbstore_test
 
 import (
 	"os"
