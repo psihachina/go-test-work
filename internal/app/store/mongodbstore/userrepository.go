@@ -2,6 +2,7 @@ package mongodbstore
 
 import (
 	"context"
+	"fmt"
 	"github.com/psihachina/go-test-work.git/internal/app/model"
 	"github.com/psihachina/go-test-work.git/internal/app/store"
 	"go.mongodb.org/mongo-driver/bson"
@@ -63,13 +64,13 @@ func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 	}
 	u.Email = result.Email
 	u.ID = result.ID
-	u.EncryptedPassword = result.Password
+	u.EncryptedPassword = result.EncryptedPassword
 
 	return u, nil
 }
 
 type Fields struct {
-	ID       primitive.ObjectID
-	Email    string
-	Password string
+	ID                primitive.ObjectID `bson:"_id"`
+	Email             string             `bson:"email" json:"email"`
+	EncryptedPassword string             `bson:"encrypted_password" json:"encrypted_password"`
 }
