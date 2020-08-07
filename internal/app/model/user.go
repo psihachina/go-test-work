@@ -1,16 +1,27 @@
 package model
 
 import (
+	validation "github.com/go-ozzo/ozzo-validation"
+	"github.com/go-ozzo/ozzo-validation/is"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // User ...
 type User struct {
-	ID                primitive.ObjectID
-	Email             string
-	Password          string
-	EncryptedPassword string
+	ID                primitive.ObjectID `json:"id"`
+	Email             string             `json:"email"`
+	Password          string             `json:"password, omitempty"`
+	EncryptedPassword string             `json:"encrypted_password"`
+}
+
+// Validate ...
+func (u *User) Validate() error {
+	return validation.ValidateStruct(
+		u,
+		validation.Field(&u.Email, validation.Required, is.Email),
+		validation.Field(&u.Password, validation.By(requiredIf(u.EncryptedPassword == "")), validation.Length(6, 100)),
+	)
 }
 
 // BeforeCreate ...
@@ -25,6 +36,11 @@ func (u *User) BeforeCreate() error {
 	}
 
 	return nil
+}
+
+// Sanitaize ...
+func (u *User) Sanitaize() {
+	u.Password = ""
 }
 
 func encryptString(s string) (string, error) {
