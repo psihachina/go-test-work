@@ -3,6 +3,7 @@ package mongodbstore
 import (
 	"context"
 	"github.com/psihachina/go-test-work.git/internal/app/model"
+	"github.com/psihachina/go-test-work.git/internal/app/store"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -14,13 +15,13 @@ type UserRepository struct {
 }
 
 // Create ...
-func (r *UserRepository) Create(u *model.User) (*model.User, error) {
+func (r *UserRepository) Create(u *model.User) error {
 	if err := u.Validate(); err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := u.BeforeCreate(); err != nil {
-		return nil, err
+		return err
 	}
 
 	userCollection := r.store.db.Collection("users")
@@ -41,12 +42,12 @@ func (r *UserRepository) Create(u *model.User) (*model.User, error) {
 	}
 	defer session.EndSession(context.Background())
 
-	result, err := session.WithTransaction(context.Background(), callback)
+	_, err = session.WithTransaction(context.Background(), callback)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return result.(*model.User), nil
+	return err
 }
 
 // FindByEmail ...
@@ -54,6 +55,10 @@ func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 	u := &model.User{}
 	var result Fields
 	if err := r.store.db.Collection("users").FindOne(context.Background(), bson.M{"email": email}).Decode(&result); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, store.ErrRecordNotFound
+		}
+
 		return nil, err
 	}
 	u.Email = result.Email

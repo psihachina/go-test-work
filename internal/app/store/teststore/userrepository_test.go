@@ -1,18 +1,15 @@
-package mongodbstore_test
+package teststore_test
 
 import (
 	"github.com/psihachina/go-test-work.git/internal/app/model"
 	"github.com/psihachina/go-test-work.git/internal/app/store"
-	"github.com/psihachina/go-test-work.git/internal/app/store/mongodbstore"
+	"github.com/psihachina/go-test-work.git/internal/app/store/teststore"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestUserRepository_Create(t *testing.T) {
-	db, teardown := mongodbstore.TestDB(t, databaseUrl, "test_database")
-	defer teardown("users")
-
-	s := mongodbstore.New(db)
+	s := teststore.New()
 
 	u := model.TestUser(t)
 
@@ -21,10 +18,8 @@ func TestUserRepository_Create(t *testing.T) {
 }
 
 func TestUserRepository_FindByEmail(t *testing.T) {
-	db, teardown := mongodbstore.TestDB(t, databaseUrl, "test_database")
-	defer teardown("users")
 
-	s := mongodbstore.New(db)
+	s := teststore.New()
 
 	email := "test@gmail.com"
 
