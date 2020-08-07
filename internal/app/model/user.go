@@ -11,7 +11,7 @@ import (
 type User struct {
 	ID                primitive.ObjectID `json:"id"`
 	Email             string             `json:"email"`
-	Password          string             `json:"password, omitempty"`
+	Password          string             `json:"password,omitempty"`
 	EncryptedPassword string             `json:"encrypted_password"`
 }
 
@@ -38,9 +38,15 @@ func (u *User) BeforeCreate() error {
 	return nil
 }
 
-// Sanitaize ...
-func (u *User) Sanitaize() {
+// Sanitize ...
+func (u *User) Sanitize() {
 	u.Password = ""
+	u.EncryptedPassword = ""
+}
+
+// ComparePassword ...
+func (u *User) ComparePassword(password string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(u.EncryptedPassword), []byte(password)) == nil
 }
 
 func encryptString(s string) (string, error) {
