@@ -49,7 +49,7 @@ func (r *TokenRepository) CreateAuth(userid string, td *model.TokenDetails) erro
 			log.Fatal(err)
 		}
 		if resultAcc.InsertedID == nil || resultRef.InsertedID == nil {
-			log.Fatal("insert failed, expected id but got", resultAcc.InsertedID, resultRef.InsertedID)
+			log.Fatal("insert failed, expected id but got ", resultAcc.InsertedID, resultRef.InsertedID)
 		}
 
 		if err = session.CommitTransaction(sc); err != nil {
@@ -91,7 +91,7 @@ func (r *TokenRepository) DeleteToken(authD *model.AccessDetails) error {
 		}
 
 		if deletedAt.DeletedCount != 1 || deletedRt.DeletedCount != 1 {
-			log.Fatal("delete failed, expected count but got", deletedAt.DeletedCount, deletedRt.DeletedCount != 1)
+			log.Fatal("delete failed, expected count but got ", deletedAt.DeletedCount, deletedRt.DeletedCount)
 		}
 
 		if err = session.CommitTransaction(sc); err != nil {
@@ -132,8 +132,8 @@ func (r *TokenRepository) DeleteTokens(authD *model.AccessDetails) error {
 			log.Fatal(err)
 		}
 
-		if deletedAt.DeletedCount == 1 || deletedRt.DeletedCount == 1 {
-			log.Fatal("delete failed, expected count but got", deletedAt.DeletedCount, deletedRt.DeletedCount != 1)
+		if deletedAt.DeletedCount == 0 || deletedRt.DeletedCount == 0 {
+			log.Fatal("delete failed, expected count but got ", deletedAt.DeletedCount, deletedRt.DeletedCount)
 		}
 
 		if err = session.CommitTransaction(sc); err != nil {
@@ -168,8 +168,8 @@ func (r *TokenRepository) DeleteAuth(givenUuid string) (int64, error) {
 			log.Fatal(err)
 		}
 
-		if deletedRt.DeletedCount == 1 {
-			log.Fatal("delete failed, expected count but got", deletedRt.DeletedCount != 1)
+		if deletedRt.DeletedCount != 1 {
+			log.Fatal("delete failed, expected count but got ", deletedRt.DeletedCount)
 		}
 
 		if err = session.CommitTransaction(sc); err != nil {
