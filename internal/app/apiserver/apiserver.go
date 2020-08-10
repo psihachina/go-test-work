@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"fmt"
 	"github.com/psihachina/go-test-work.git/internal/app/store/mongodbstore"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -25,10 +26,10 @@ func Start(config *Config) error {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "3000"
+		fmt.Errorf("$PORT not set")
 	}
 
-	return http.ListenAndServe(port, srv)
+	return http.ListenAndServe(":"+port, srv)
 }
 
 func newDB(databaseUrl string) (*mongo.Database, error) {
