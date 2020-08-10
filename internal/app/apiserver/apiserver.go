@@ -28,7 +28,6 @@ func Start(config *Config) error {
 	if port == "" {
 		fmt.Errorf("$PORT not set")
 	}
-	port = "3000"
 	return http.ListenAndServe(":"+port, srv)
 }
 
