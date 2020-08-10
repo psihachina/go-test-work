@@ -1,0 +1,3 @@
+bind_addr = ":8080"
+log_level= "debug"
+database_url = "mongodb+srv://psihachina:cSTJ9Ia2nHLDYZZq@cluster0.u1rzt.gcp.mongodb.net/sample_mflix?retryWrites=true&w=majority"
