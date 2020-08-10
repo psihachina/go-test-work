@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -22,7 +23,12 @@ func Start(config *Config) error {
 
 	srv := newServer(store)
 
-	return http.ListenAndServe(config.BindAddr, srv)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	return http.ListenAndServe(port, srv)
 }
 
 func newDB(databaseUrl string) (*mongo.Database, error) {
