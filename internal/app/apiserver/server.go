@@ -153,7 +153,7 @@ func (s *server) handleSessionsDelete() http.HandlerFunc {
 			return
 		}
 
-		delErr := s.store.Token().DeleteToken(metadata)
+		_, delErr := s.store.Token().DeleteAuth(metadata.RefreshUuid)
 		if delErr != nil {
 			s.respond(w, r, http.StatusUnauthorized, delErr.Error())
 			return
