@@ -3,17 +3,19 @@ package apiserver
 import (
 	"context"
 	"fmt"
-	"github.com/psihachina/go-test-work.git/internal/app/store/mongodbstore"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/psihachina/go-test-work.git/internal/app/store/mongodbstore"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// Start ...
 func Start(config *Config) error {
-	db, err := newDB(config.DatabaseUrl)
+	db, err := newDB(config.DatabaseURL)
 	if err != nil {
 		return err
 	}
@@ -31,8 +33,8 @@ func Start(config *Config) error {
 	return http.ListenAndServe(":"+port, srv)
 }
 
-func newDB(databaseUrl string) (*mongo.Database, error) {
-	db, err := mongo.NewClient(options.Client().ApplyURI(databaseUrl))
+func newDB(databaseURL string) (*mongo.Database, error) {
+	db, err := mongo.NewClient(options.Client().ApplyURI(databaseURL))
 	if err != nil {
 		return nil, err
 	}

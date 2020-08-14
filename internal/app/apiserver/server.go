@@ -3,27 +3,28 @@ package apiserver
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/gorilla/mux"
-	"github.com/psihachina/go-test-work.git/internal/app/model"
-	"github.com/psihachina/go-test-work.git/internal/app/store"
-	"github.com/sirupsen/logrus"
-	"github.com/twinj/uuid"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/dgrijalva/jwt-go"
+	"github.com/gin-gonic/gin"
+	"github.com/psihachina/go-test-work.git/internal/app/model"
+	"github.com/psihachina/go-test-work.git/internal/app/store"
+	"github.com/sirupsen/logrus"
+	"github.com/twinj/uuid"
 )
 
 type server struct {
-	router *mux.Router
+	router *gin.Engine
 	logger *logrus.Logger
 	store  store.Store
 }
 
 func newServer(store store.Store) *server {
 	s := &server{
-		router: mux.NewRouter(),
+		router: gin.Default(),
 		logger: logrus.New(),
 		store:  store,
 	}
@@ -36,147 +37,143 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) configureRouter() {
-	s.router.HandleFunc("/Login", s.handleSessionsCreate()).Methods("POST")
-	s.router.HandleFunc("/Logout", s.handleSessionsDelete()).Methods("POST")
-	s.router.HandleFunc("/Refresh", s.HandleSessionsRefresh()).Methods("POST")
-	s.router.HandleFunc("/LogoutAll", s.handleAllSessionsDelete()).Methods("POST")
+	s.router.GET("/", s.HandleServerWork)
+	s.router.POST("/Login", s.HandleSessionsCreate)
+	s.router.POST("/Logout", s.HandleSessionsDelete)
+	s.router.POST("/Refresh", s.HandleSessionsRefresh)
+	s.router.POST("/LogoutAll", s.HandleAllSessionsDelete)
 }
 
-func (s *server) HandleSessionsRefresh() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		token, err := s.VerifyRefreshToken(r)
-		if err != nil {
-			s.respond(w, r, http.StatusUnauthorized, "Refresh token expired")
-			return
-		}
-		if _, ok := token.Claims.(jwt.Claims); !ok && !token.Valid {
-			s.respond(w, r, http.StatusUnauthorized, err)
-			return
-		}
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if ok && token.Valid {
-			refreshUuid, ok := claims["refresh_uuid"].(string)
-			if !ok {
-				s.respond(w, r, http.StatusUnprocessableEntity, err)
-				return
-			}
-			userId := claims["user_id"].(string)
-			if err != nil {
-				s.respond(w, r, http.StatusUnprocessableEntity, "Error occurred")
-				return
-			}
-
-			deleted, delErr := s.store.Token().DeleteAuth(refreshUuid)
-			if delErr != nil || deleted == 0 { //if any goes wrong
-				s.respond(w, r, http.StatusUnauthorized, "unauthorized")
-				return
-			}
-
-			ts, createErr := s.Create(userId)
-			if createErr != nil {
-				s.respond(w, r, http.StatusForbidden, createErr.Error())
-				return
-			}
-
-			saveErr := s.store.Token().CreateAuth(userId, ts)
-			if saveErr != nil {
-				s.respond(w, r, http.StatusForbidden, saveErr.Error())
-				return
-			}
-			tokens := map[string]string{
-				"access_token":  ts.AccessToken,
-				"refresh_token": ts.RefreshToken,
-			}
-
-			w.Header().Add("Authorization", ts.AccessToken)
-
-			http.SetCookie(w, &http.Cookie{
-				Name:     "refresh_token",
-				Value:    ts.RefreshToken,
-				Expires:  time.Now().Add(120 * time.Minute),
-				HttpOnly: true,
-			})
-
-			s.respond(w, r, http.StatusCreated, tokens)
-		} else {
-			s.respond(w, r, http.StatusUnauthorized, "refresh expired")
-		}
-	}
-
+func (s *server) HandleServerWork(c *gin.Context) {
+	c.String(200, "work")
 }
 
-func (s *server) handleSessionsCreate() http.HandlerFunc {
-	type request struct {
-		UserId string `json:"id"`
+func (s *server) HandleSessionsRefresh(c *gin.Context) {
+	token, err := s.VerifyRefreshToken(c.Request)
+	if err != nil {
+		s.respond(c.Writer, c.Request, http.StatusUnauthorized, "Refresh token expired")
+		return
 	}
-	return func(w http.ResponseWriter, r *http.Request) {
-		req := &request{}
-		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
-			s.error(w, r, http.StatusBadRequest, err)
+	if _, ok := token.Claims.(jwt.Claims); !ok && !token.Valid {
+		s.respond(c.Writer, c.Request, http.StatusUnauthorized, err)
+		return
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if ok && token.Valid {
+		refreshUUID, ok := claims["refresh_uuid"].(string)
+		if !ok {
+			s.respond(c.Writer, c.Request, http.StatusUnprocessableEntity, err)
+			return
+		}
+		userID := claims["user_id"].(string)
+		if err != nil {
+			s.respond(c.Writer, c.Request, http.StatusUnprocessableEntity, "Error occurred")
 			return
 		}
 
-		ts, err := s.Create(req.UserId)
-		if err != nil {
-			s.respond(w, r, http.StatusUnprocessableEntity, err.Error())
+		deleted, delErr := s.store.Token().DeleteAuth(refreshUUID)
+		if delErr != nil || deleted == 0 { //if any goes wrong
+			s.respond(c.Writer, c.Request, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 
-		err = s.store.Token().CreateAuth(req.UserId, ts)
-		if err != nil {
-			s.respond(w, r, http.StatusUnprocessableEntity, err.Error())
+		ts, createErr := s.Create(userID)
+		if createErr != nil {
+			s.respond(c.Writer, c.Request, http.StatusForbidden, createErr.Error())
+			return
 		}
 
+		saveErr := s.store.Token().CreateAuth(userID, ts)
+		if saveErr != nil {
+			s.respond(c.Writer, c.Request, http.StatusForbidden, saveErr.Error())
+			return
+		}
 		tokens := map[string]string{
 			"access_token":  ts.AccessToken,
 			"refresh_token": ts.RefreshToken,
 		}
 
-		w.Header().Add("Authorization", ts.AccessToken)
+		c.Writer.Header().Add("Authorization", ts.AccessToken)
 
-		http.SetCookie(w, &http.Cookie{
+		http.SetCookie(c.Writer, &http.Cookie{
 			Name:     "refresh_token",
 			Value:    ts.RefreshToken,
 			Expires:  time.Now().Add(120 * time.Minute),
 			HttpOnly: true,
 		})
 
-		s.respond(w, r, http.StatusOK, tokens)
+		s.respond(c.Writer, c.Request, http.StatusCreated, tokens)
+	} else {
+		s.respond(c.Writer, c.Request, http.StatusUnauthorized, "refresh expired")
 	}
 }
 
-func (s *server) handleSessionsDelete() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		metadata, err := s.ExtractTokenMetadata(r)
-		if err != nil {
-			s.respond(w, r, http.StatusUnauthorized, "unauthorized")
-			return
-		}
-
-		_, delErr := s.store.Token().DeleteAuth(metadata.RefreshUuid)
-		if delErr != nil {
-			s.respond(w, r, http.StatusUnauthorized, delErr.Error())
-			return
-		}
-		s.respond(w, r, http.StatusOK, "Successfully logged out")
+func (s *server) HandleSessionsCreate(c *gin.Context) {
+	type request struct {
+		UserID string `json:"id"`
 	}
+	req := &request{}
+	if err := json.NewDecoder(c.Request.Body).Decode(req); err != nil {
+		s.error(c.Writer, c.Request, http.StatusBadRequest, err)
+		return
+	}
+
+	ts, err := s.Create(req.UserID)
+	if err != nil {
+		s.respond(c.Writer, c.Request, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+
+	err = s.store.Token().CreateAuth(req.UserID, ts)
+	if err != nil {
+		s.respond(c.Writer, c.Request, http.StatusUnprocessableEntity, err.Error())
+	}
+
+	tokens := map[string]string{
+		"access_token":  ts.AccessToken,
+		"refresh_token": ts.RefreshToken,
+	}
+
+	c.Writer.Header().Set("Authorization", ts.AccessToken)
+
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    ts.RefreshToken,
+		Expires:  time.Now().Add(120 * time.Minute),
+		HttpOnly: true,
+	})
+
+	s.respond(c.Writer, c.Request, http.StatusOK, tokens)
 }
 
-func (s *server) handleAllSessionsDelete() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		metadata, err := s.ExtractTokenMetadata(r)
-		if err != nil {
-			s.respond(w, r, http.StatusUnauthorized, "unauthorized")
-			return
-		}
-
-		delErr := s.store.Token().DeleteTokens(metadata)
-		if delErr != nil {
-			s.respond(w, r, http.StatusUnauthorized, delErr.Error())
-			return
-		}
-		s.respond(w, r, http.StatusOK, "Successfully logged out")
+func (s *server) HandleSessionsDelete(c *gin.Context) {
+	metadata, err := s.ExtractTokenMetadata(c.Request)
+	if err != nil {
+		s.respond(c.Writer, c.Request, http.StatusUnauthorized, "unauthorized")
+		return
 	}
+
+	_, delErr := s.store.Token().DeleteAuth(metadata.RefreshUUID)
+	if delErr != nil {
+		s.respond(c.Writer, c.Request, http.StatusUnauthorized, delErr.Error())
+		return
+	}
+	s.respond(c.Writer, c.Request, http.StatusOK, "Successfully logged out")
+}
+
+func (s *server) HandleAllSessionsDelete(c *gin.Context) {
+	metadata, err := s.ExtractTokenMetadata(c.Request)
+	if err != nil {
+		s.respond(c.Writer, c.Request, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	delErr := s.store.Token().DeleteTokens(metadata)
+	if delErr != nil {
+		s.respond(c.Writer, c.Request, http.StatusUnauthorized, delErr.Error())
+		return
+	}
+	s.respond(c.Writer, c.Request, http.StatusOK, "Successfully logged out")
 }
 
 func (s *server) ExtractAccessToken(r *http.Request) string {
@@ -251,29 +248,29 @@ func (s *server) ExtractTokenMetadata(r *http.Request) (*model.AccessDetails, er
 
 	claims, ok := accessToken.Claims.(jwt.MapClaims)
 	if ok && accessToken.Valid {
-		accessUuid, ok := claims["access_uuid"].(string)
+		accessUUID, ok := claims["access_uuid"].(string)
 		if !ok {
 			return nil, err
 		}
-		userId := claims["user_id"].(string)
+		userID := claims["user_id"].(string)
 		if err != nil {
 			return nil, err
 		}
 
-		fmt.Println(accessUuid, userId)
+		fmt.Println(accessUUID, userID)
 
 		claims, ok := refreshToken.Claims.(jwt.MapClaims)
 		if ok && refreshToken.Valid {
-			refreshUuid, ok := claims["refresh_uuid"].(string)
+			refreshUUID, ok := claims["refresh_uuid"].(string)
 			if !ok {
 				return nil, err
 			}
-			fmt.Println(refreshUuid)
+			fmt.Println(refreshUUID)
 
 			return &model.AccessDetails{
-				AccessUuid:  accessUuid,
-				UserId:      userId,
-				RefreshUuid: refreshUuid,
+				AccessUUID:  accessUUID,
+				UserID:      userID,
+				RefreshUUID: refreshUUID,
 			}, nil
 
 		}

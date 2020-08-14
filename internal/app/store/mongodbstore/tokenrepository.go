@@ -3,11 +3,12 @@ package mongodbstore
 import (
 	"context"
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/psihachina/go-test-work.git/internal/app/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"log"
-	"time"
 )
 
 type TokenRepository struct {
@@ -71,7 +72,7 @@ func (r *TokenRepository) DeleteTokens(authD *model.AccessDetails) error {
 	}
 	if err = mongo.WithSession(ctx, session, func(sc mongo.SessionContext) error {
 		collection = r.store.db.Collection("refresh_sessions")
-		deletedRt, err = collection.DeleteMany(context.Background(), bson.M{"userId": authD.UserId})
+		deletedRt, err = collection.DeleteMany(context.Background(), bson.M{"userId": authD.UserID})
 		if err != nil {
 			log.Fatal(err)
 		}
