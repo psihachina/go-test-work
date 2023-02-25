@@ -19,7 +19,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/twinj/uuid v1.0.0
 	go.mongodb.org/mongo-driver v1.4.0
-	golang.org/x/sys v0.0.0-20200812155832-6a926be9bd1d // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
